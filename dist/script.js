@@ -1,0 +1,112 @@
+var margin = 40,
+width = 900,
+height = 600;
+
+var formatTime = d3.timeFormat('%M:%S');
+var color = ["#ADD8E6", "#FFA500"];
+
+var tooltip = d3.select('.chart').
+append('div').
+attr("class", "tooltip").
+attr('id', 'tooltip').
+style('display', 'none');
+
+var svg = d3.select('.chart').
+append('svg').
+attr('width', width).
+attr('height', height);
+
+d3.json('https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/cyclist-data.json', function (data) {
+
+  //PARSE TIME DATA
+  data.forEach(d => {
+    var parsedTime = d3.timeParse('%M:%S');
+    d.Time = parsedTime(d.Time);
+  });
+
+  //YEAR MIN AND MAX
+  var yearMin = d3.min(data, d => d.Year);
+  var yearMax = d3.max(data, d => d.Year);
+
+  //FORMAT SCALE X-AXIS
+  var x = d3.scaleLinear().
+  domain([yearMin - 1, yearMax + 1]).
+  range([margin, width - margin]);
+
+  //FORMAT SCALE Y-AXIS  
+  var y = d3.scaleLinear().
+  domain(d3.extent(data, d => d.Time)).
+  range([height - margin, margin]);
+
+  //CIRCLE
+  var circle = svg.selectAll('circle').
+  data(data).
+  enter().
+  append('circle').
+  attr('cx', d => x(d.Year)).
+  attr('cy', d => y(d.Time)).
+  attr('r', 6).
+  attr('class', 'dot').
+  attr('data-xvalue', d => d.Year).
+  attr('data-yvalue', d => d.Time).
+  style('fill', d => {
+    return d.Doping ? color[0] : color[1];
+  }).
+  on('mouseover', d => {
+    tooltip.style('display', 'inline');
+    tooltip.attr('data-year', d.Year);
+    tooltip.html(d.Name + ", " + d.Nationality + "<br/>" +
+    "Year: " + d.Year + ', ' + "Time: " + formatTime(d.Time) + (
+    d.Doping ? "<br/><br/>" + d.Doping : "")).
+    style('top', d3.event.pageY - 20 + "px").
+    style('left', d3.event.pageX + 10 + "px");
+  }).
+  on('mouseout', d => {
+    tooltip.style('display', 'none');
+  });
+
+  //AXES GROUP
+  var xAxis = d3.axisBottom(x).
+  tickFormat(d3.format('d'));
+
+  var yAxis = d3.axisLeft(y).
+  tickFormat(formatTime);
+
+  svg.append('g').
+  attr('id', 'x-axis').
+  attr('transform', 'translate(0, ' + (height - margin) + ')').
+  call(xAxis);
+
+  svg.append('g').
+  attr('id', 'y-axis').
+  attr('transform', 'translate(' + margin + ', 0)').
+  call(yAxis);
+
+  //LEGEND
+  var legend = svg.selectAll('#legend').
+  data(color).
+  enter().
+  append('g').
+  attr('id', 'legend').
+  attr('transform', function (d, i) {
+    return "translate(-40," + (height / 1.4 - i * 20) + ")";
+  });
+
+  legend.append('rect').
+  attr("x", width - 18).
+  attr('width', 18).
+  attr('height', 18).
+  style('fill', d => d);
+
+  legend.append('text').
+  attr("x", width - 25).
+  attr("y", 8).
+  attr("dy", ".30em").
+  style("text-anchor", "end").
+  style('font-size', "12px").
+  style('font-weight', 'bold').
+  text(d => {
+    if (d !== color[1]) return "Riders with doping allegations";else
+    {return "No doping allegations";};
+  });
+});
